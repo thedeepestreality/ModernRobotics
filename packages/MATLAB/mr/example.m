@@ -1,0 +1,23 @@
+L1 = 0.425; L2 = 0.392;
+W1 = 0.109; W2 = 0.082;
+H1 = 0.089; H2 = 0.095;
+s1=[0  1 0 W1+W2 0 L1+L2]';
+s2=[0  0 1 H2 -L1-L2 0]';
+s3=[0  0 1 H2 -L2 0]';
+s4=[0  0 1 H2 0 0]';
+s5=[0 -1 0 -W2 0 0]';
+s6=[0  0 1 0 0 0]';
+Slist=[s1 s2 s3 s4 s5 s6];
+M = [-1 0 0 L1+L2;
+      0 0 1 W1+W2;
+      0 1 0 H1-H2;
+      0 0 0 1];
+Tsd=[ 0 1  0 -0.5;
+      0 0 -1 0.1;
+     -1 0  0 0.1;
+      0 0  0 1];
+thetalist0=[0 2 1 2 3 -1]';
+eomg=0.001;
+ev=0.0001;
+[thetalist, success] = IKinBodyIterates(Slist, M, Tsd, thetalist0, eomg, ev);
+T = FKinBody(M,Slist,thetalist)
