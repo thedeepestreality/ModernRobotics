@@ -1,11 +1,11 @@
-function [thetalist, success] = IKinBodyIterates(Blist, M, T, thetalist0, eomg, ev)
+function [thetalist, success] = IKinBodyIterates(Blist, M, T, thetalist, eomg, ev)
 % *** CHAPTER 6: INVERSE KINEMATICS ***
 % Takes Blist: The joint screw axes in the end-effector frame when the
 %              manipulator is at the home position, in the format of a 
 %              matrix with the screw axes as the columns,
 %       M: The home configuration of the end-effector,
 %       T: The desired end-effector configuration Tsd,
-%       thetalist0: An initial guess of joint angles that are close to 
+%       thetalist: An initial guess of joint angles that are close to 
 %                   satisfying Tsd,
 %       eomg: A small positive tolerance on the end-effector orientation
 %             error. The returned joint angles must give an end-effector 
@@ -42,32 +42,43 @@ function [thetalist, success] = IKinBodyIterates(Blist, M, T, thetalist0, eomg, 
 % success =
 %     1
 
-thetalist = thetalist0;
-i = 0;
+iter = 0;
 maxiterations = 20;
-% Vb = se3ToVec(MatrixLog6(TransInv(FKinBody(M, Blist, thetalist)) * T));
-% err = norm(Vb(1: 3)) > eomg || norm(Vb(4: 6)) > ev;
-thetalist_log = [];
-while 1
-    thetalist_log = [thetalist_log; thetalist];
+
+%here we will keep joints history
+thetalist_log = thetalist';
+
+%matlab has no do-while loop, so let's invent our own
+while true
+    %do computation magic
     se3 = MatrixLog6(TransInv(FKinBody(M, Blist, thetalist)) * T);
     Vb = se3ToVec(se3);
     omega_b = norm(Vb(1: 3));
     v_b = norm(Vb(4: 6));
     err = omega_b > eomg || v_b > ev;
-    fprintf('Iteration %d:\n', i);
+
+    %print report
+    fprintf('Iteration %d:\n', iter);
     fprintf('joint values: %s\n', mat2str(thetalist,3));
     fprintf('SE(3) end-effector config: %s\n', mat2str(se3,3));
     fprintf('error twist V_b: %s\n', mat2str(Vb,3));
     fprintf('angular error magnitude: %.3f\n', omega_b);
     fprintf('linear error magnitude: %.3f\n\n', v_b);
-    if (~(err && i < maxiterations))
-        thetalist_log = [thetalist_log; thetalist];
+
+    %post-condition for our do-while
+    if (~err || iter >= maxiterations)
         break;
-    end
+    end 
+
+    %joints list for the next iteration
     thetalist = thetalist + pinv(JacobianBody(Blist, thetalist)) * Vb;
-    i = i + 1;
+    %append joints to the history -- might look messy,
+    %but we don't know the number of iterations in advance
+    thetalist_log = [thetalist_log; thetalist'];
+    iter = iter + 1;
 end
+
+%write joints history to .csv file
 dlmwrite('joints.csv',thetalist_log,'precision','%.3f');
-success = ~ err;
+success = ~err;
 end
